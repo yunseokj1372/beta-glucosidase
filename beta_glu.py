@@ -7,6 +7,7 @@ from sklearn.metrics import r2_score
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
+import xgboost as xgb
 
 from sklearn.preprocessing import OneHotEncoder
 from Bio import SeqIO
@@ -116,37 +117,80 @@ def RF(X_train, y_train, X_test):
 #Decision Tree
 
 def DT(X_train, y_train, X_test):
+    param_grid={ "max_features": [5], 'random_state':[20]}
     tree_reg=DecisionTreeRegressor()
-    tree_reg.fit(X_train, y_train)
-    DT_pred=tree_reg.predict(X_test)
-    pred_training= tree_reg.predict(X_train)
+    grid_search=GridSearchCV(tree_reg, param_grid, cv=5, scoring='neg_mean_squared_error', return_train_score=True)
+    grid_search.fit(X_train,np.ravel(y_train))
+    DT_pred = grid_search.predict(X_test)
+    pred_training= grid_search.predict(X_train)
     return DT_pred, pred_training
 
 #SVM
 
 def SVM(X_train, y_train, X_test):
-    model = SVR(kernel='poly', degree=2, C=100, epsilon=0.5)
-    model.fit(X_train,y_train)
-    SVM_pred = model.predict(X_test)
-    pred_training= model.predict(X_train)
+    param_grid = {'C': [100],
+              'epsilon': [0.5],
+              'kernel': ['poly']}
+ 
+    model = SVR()
+    grid = GridSearchCV(SVR(), param_grid, refit = True)
+    grid.fit(X_train, y_train)
+    SVM_pred = grid.predict(X_test)
+    pred_training= grid.predict(X_train)
     return SVM_pred, pred_training
 
 #Neural Network Regression
 
 def NNR(X_train, y_train, X_test):
-    regr = MLPRegressor(random_state=101, max_iter=100).fit(X_train, y_train)
-    NNR_pred=regr.predict(X_test)
-    pred_training= regr.predict(X_train)
+    param_grid = {"hidden_layer_sizes": [(1,),(50,)], "alpha": [0.5]}
+    
+    grid = GridSearchCV(MLPRegressor(random_state=101, max_iter=100), param_grid, refit = True)
+    grid.fit(X_train, y_train)
+    NNR_pred = grid.predict(X_test)
+    pred_training= grid.predict(X_train)
     return NNR_pred, pred_training
 
 #Elastic Net
 
 def EN(X_train, y_train, X_test):
-    ENmodel = ElasticNet(alpha=1.0, l1_ratio=0.5)
-    ENmodel.fit(X_train,y_train)
-    EN_pred = ENmodel.predict(X_test)
-    pred_training= ENmodel.predict(X_train)
+    param_grid = dict()
+    param_grid['alpha'] = [1.0]
+    param_grid['l1_ratio'] =[0.5]
+
+    grid = GridSearchCV(ElasticNet(), param_grid,scoring='r2', refit = True)
+    grid.fit(X_train, y_train)
+    EN_pred = grid.predict(X_test)
+    pred_training= grid.predict(X_train)
+
     return EN_pred, pred_training
+
+
+def XGBR(X_train, y_train, X_test):
+    params = { 'max_depth': [4],
+           'n_estimators': [100],
+           'colsample_bytree': [0.2],
+           'min_child_weight': [3],
+           'gamma': [0.3],
+           'subsample': [0.4]}
+    model = xgb.XGBRegressor()
+    grid = GridSearchCV(estimator=XGBRegressor(), 
+                       param_grid=params)
+    grid.fit(X_train, y_train)
+    XGB_pred = grid.predict(X_test)
+    pred_training= grid.predict(X_train)
+    return XGB_pred, pred_training
+
+
+# BLOSUM score function
+
+blosum.update(((b,a),val) for (a,b),val in list(blosum.items()))
+
+def score_pairwise(seq1, seq2, matrix, gap_s, gap_e, gap = True):
+    for A,B in zip(seq1, seq2):
+        diag = ('-'==A) or ('-'==B)
+        yield (gap_e if gap else gap_s) if diag else matrix[(A,B)]
+        gap = diag
+
 
 
 def ml_process(encoding, output, df, key = None):
@@ -168,25 +212,24 @@ def ml_process(encoding, output, df, key = None):
     main_index = list(main_output.index)
     
     all_result = []
-    if encoding = 'One-Hot-Encoder':
+    if encoding == 'One-Hot-Encoder':
         holder = np.nan
         X = df['Sequence'].iloc[main_index].dropna()
         rem_index = list(X.index)
-        y = df['pNP-Glc Km (mM)'].iloc[rem_index]
+        y = df[output].iloc[rem_index]
         one_hot = OneHotEncoder()
         temp_seq = np.array(X).reshape(-1,1)
         encoded = one_hot.fit(temp_seq)
         X = encoded.transform(temp_seq).toarray()
         
-        
-    if encoding = 'Bag-of-Words':
+    if encoding == 'Bag-of-Words':
         holder = np.nan
         X = df['Sequence'].iloc[main_index].dropna()
         rem_index = list(X.index)
-        y = df['pNP-Glc Km (mM)'].iloc[rem_index]
+        y = df[output].iloc[rem_index]
         X = pd.DataFrame([ProteinAnalysis(i).count_amino_acids() for i in X])
         
-    if encoding = 'AAIndex':
+    if encoding == 'AAIndex':
         aaindex = Aaindex()
 #         full_list = aaindex.get_all(dbkey='aaindex1')
         
@@ -205,7 +248,8 @@ def ml_process(encoding, output, df, key = None):
 
         holder = key[0]
         
-    if encoding = 'BLOSUM62':
+    if encoding == 'BLOSUM62':
+
         holder = np.nan
         temp1=dframe.transpose()
         temp2 = df[['Organism Name',output]]
@@ -256,3 +300,89 @@ def ml_process(encoding, output, df, key = None):
     dfResults = pd.DataFrame(all_result, columns=['Output' , 'Algorithm','Encoding Method' ,'Code', "RMSE Training", 'RMSE Test',"R^2 train","R^2 pred"])
     
     return dfResults
+
+
+def encode(encoding, output, df, key = None):
+    data=df[['Wild/Mutant', 'Kingdom', 'pH Optimum', 'Temperature Optimum',
+           't1/2 (min)', 'kd (min-1)', 'pNP-Glc Km (mM)', 'pNP-Glc kcat (1/s)',
+           'pNP-Glc kcat/Km (1/smM)', 'Cellobiose Km (mM)',
+           'Cellobiose kcat (1/s)', 'Cellobiose kcat/Km (1/smM)', 'Cellobiose Ki (mM)',
+           'pNP-Glc Ki (mM)', 'MW (kDa)']]
+    
+
+    ClustalAlign = AlignIO.read('seqs.aln', 'clustal')
+    summary_align = AlignInfo.SummaryInfo(ClustalAlign )
+    
+    dframe = pc.from_bioalignment(ClustalAlign)
+    dframe = dframe.replace('U', '-')
+    dframe = dframe.replace('O','-')
+    
+    main_output = removeoutliers(df[[output]])
+    main_index = list(main_output.index)
+    
+    if encoding == 'One-Hot-Encoder':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+        one_hot = OneHotEncoder()
+        temp_seq = np.array(X).reshape(-1,1)
+        encoded = one_hot.fit(temp_seq)
+        X = encoded.transform(temp_seq).toarray()
+        
+    if encoding == 'Bag-of-Words':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+        X = pd.DataFrame([ProteinAnalysis(i).count_amino_acids() for i in X])
+        
+    if encoding == 'AAIndex':
+        aaindex = Aaindex()
+#         full_list = aaindex.get_all(dbkey='aaindex1')
+        
+        record = aaindex.get(key[0])
+        index_data = record.index_data
+        index_data['-'] = 0
+        sequence_aligned=dframe.apply(lambda dframe : pd.Series(index_data[i] for i in dframe))
+
+        temp1=sequence_aligned.transpose()
+        temp2 = df[['Organism Name', output]]
+        temp3 = removeoutlier_col(temp2,output).set_index('Organism Name')
+        Z=pd.concat([temp1, temp3], axis=1).dropna()
+
+        X=Z.loc[:, Z.columns != output]
+        y=Z.loc[:, Z.columns == output]
+
+        holder = key[0]
+        
+    if encoding == 'BLOSUM62':
+
+        holder = np.nan
+        temp1=dframe.transpose()
+        temp2 = df[['Organism Name',output]]
+        temp3 = removeoutlier_col(temp2,output).set_index('Organism Name')
+        Z=pd.concat([temp1, temp3], axis=1).dropna()
+
+        X=Z.loc[:, Z.columns != output]
+        y=Z.loc[:, Z.columns == output]
+
+        n = len(X)
+        enc_seq = np.zeros((n,n))
+
+        i = 0
+
+        for a in list(X.index):
+            j = 0
+            for b in list(X.index):
+                enc_seq[i,j] = sum(score_pairwise(X.loc[a], X.loc[b], blosum, -5, -1))
+                j += 1
+            i += 1
+
+        X = enc_seq
+        
+        
+    return X,y
+    
+
+
