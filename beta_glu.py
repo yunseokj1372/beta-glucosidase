@@ -18,6 +18,7 @@ from Bio import AlignIO
 from Bio import SeqIO
 from Bio.Align.Applications import MuscleCommandline
 from Bio.Align import AlignInfo
+from scipy.fft import fft, ifft
 
 from sklearn.preprocessing import scale 
 from sklearn import model_selection
@@ -172,8 +173,7 @@ def XGBR(X_train, y_train, X_test):
            'min_child_weight': [3],
            'gamma': [0.3],
            'subsample': [0.4]}
-    model = xgb.XGBRegressor()
-    grid = GridSearchCV(estimator=XGBRegressor(), 
+    grid = GridSearchCV(estimator=xgb.XGBRegressor(), 
                        param_grid=params)
     grid.fit(X_train, y_train)
     XGB_pred = grid.predict(X_test)
@@ -193,15 +193,10 @@ def score_pairwise(seq1, seq2, matrix, gap_s, gap_e, gap = True):
 
 
 
-def ml_process(encoding, output, df, key = None):
-    data=df[['Wild/Mutant', 'Kingdom', 'pH Optimum', 'Temperature Optimum',
-       't1/2 (min)', 'kd (min-1)', 'pNP-Glc Km (mM)', 'pNP-Glc kcat (1/s)',
-       'pNP-Glc kcat/Km (1/smM)', 'Cellobiose Km (mM)',
-       'Cellobiose kcat (1/s)', 'Cellobiose kcat/Km (1/smM)', 'Cellobiose Ki (mM)',
-       'pNP-Glc Ki (mM)', 'MW (kDa)']]
-    
+def ml_process(encoding, output, df, aln, key = None):
 
-    ClustalAlign = AlignIO.read('seqs.aln', 'clustal')
+
+    ClustalAlign = AlignIO.read(aln, 'clustal')
     summary_align = AlignInfo.SummaryInfo(ClustalAlign )
     
     dframe = pc.from_bioalignment(ClustalAlign)
@@ -302,15 +297,10 @@ def ml_process(encoding, output, df, key = None):
     return dfResults
 
 
-def encode(encoding, output, df, key = None):
-    data=df[['Wild/Mutant', 'Kingdom', 'pH Optimum', 'Temperature Optimum',
-           't1/2 (min)', 'kd (min-1)', 'pNP-Glc Km (mM)', 'pNP-Glc kcat (1/s)',
-           'pNP-Glc kcat/Km (1/smM)', 'Cellobiose Km (mM)',
-           'Cellobiose kcat (1/s)', 'Cellobiose kcat/Km (1/smM)', 'Cellobiose Ki (mM)',
-           'pNP-Glc Ki (mM)', 'MW (kDa)']]
+def encode(encoding, output, df, aln, key = None):
     
 
-    ClustalAlign = AlignIO.read('seqs.aln', 'clustal')
+    ClustalAlign = AlignIO.read(aln, 'clustal')
     summary_align = AlignInfo.SummaryInfo(ClustalAlign )
     
     dframe = pc.from_bioalignment(ClustalAlign)
@@ -381,8 +371,143 @@ def encode(encoding, output, df, key = None):
 
         X = enc_seq
         
+    if encoding == 'fft':
+        aaindex = Aaindex()
+        
+        record = aaindex.get(key[0])
+        index_data = record.index_data
+        index_data['-'] = 0
+        sequence_aligned=dframe.apply(lambda dframe : pd.Series(index_data[i] for i in dframe))
+
+        temp1=sequence_aligned.transpose()
+        temp2 = df[['Organism Name', output]]
+        temp3 = removeoutlier_col(temp2,output).set_index('Organism Name')
+        Z=pd.concat([temp1, temp3], axis=1).dropna()
+
+        X=Z.loc[:, Z.columns != output]
+        y=Z.loc[:, Z.columns == output]
+        
+        
+        X = fft(X)
+        holder = key[0]
+        
+    return X,y
+
+
+
+def encode_temp(encoding, output, df, aln, key = None):
+    
+
+    ClustalAlign = AlignIO.read(aln, 'clustal')
+    summary_align = AlignInfo.SummaryInfo(ClustalAlign )
+    
+    dframe = pc.from_bioalignment(ClustalAlign)
+    dframe = dframe.replace('U', '-')
+    dframe = dframe.replace('O','-')
+    
+    main_output = removeoutliers(df[[output]])
+    main_index = list(main_output.index)
+    
+    if encoding == 'One-Hot-Encoder':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+        one_hot = OneHotEncoder()
+        temp_seq = np.array(X).reshape(-1,1)
+        encoded = one_hot.fit(temp_seq)
+        X = encoded.transform(temp_seq).toarray()
+        temperature = 'Reaction Temperature'
+        X1 = df[temperature].iloc[rem_index]
+        temp1 = np.array(X1).reshape(-1,1)
+        X = np.concatenate((X,temp1), axis =1)
+        
+    if encoding == 'Bag-of-Words':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+        X = pd.DataFrame([ProteinAnalysis(i).count_amino_acids() for i in X])
+        temperature = 'Reaction Temperature'
+        X1 = df[temperature].iloc[rem_index]
+        temp1 = np.array(X1).reshape(-1,1)
+        X = np.concatenate((X,temp1), axis =1)
+        
+    if encoding == 'AAIndex':
+        temperature = 'Reaction Temperature'
+        aaindex = Aaindex()
+#         full_list = aaindex.get_all(dbkey='aaindex1')
+        
+        record = aaindex.get(key[0])
+        index_data = record.index_data
+        index_data['-'] = 0
+        sequence_aligned=dframe.apply(lambda dframe : pd.Series(index_data[i] for i in dframe))
+
+        temp1=sequence_aligned.transpose()     
+        temp2 = df[['Organism Name',temperature,output]]
+        temp3 =removeoutlier_col(temp2,output).set_index('Organism Name')
+        Z=pd.concat([temp1, temp3], axis=1).dropna()
+        X=Z.loc[:, Z.columns != output ]
+        y=Z.loc[:, Z.columns == output]
+        temp_col = X.loc[:, X.columns == temperature ]
+        X = X.loc[:, X.columns != temperature ]
+        
+
+        holder = key[0]
+        
+    if encoding == 'BLOSUM62':
+
+        holder = np.nan
+        temperature = 'Reaction Temperature'
+        temp1=dframe.transpose()
+        temp2 = df[['Organism Name',temperature,output]]
+        temp3 =removeoutlier_col(temp2,output).set_index('Organism Name')
+        Z=pd.concat([temp1, temp3], axis=1).dropna()
+        X=Z.loc[:, Z.columns != output ]
+        y=Z.loc[:, Z.columns == output]
+        temp_col = X.loc[:, X.columns == temperature ]
+        X = X.loc[:, X.columns != temperature ]
+        
+        
+        n = len(X)
+        enc_seq = np.zeros((n,n))
+
+        i = 0
+
+        for a in list(X.index):
+            j = 0
+            for b in list(X.index):
+                enc_seq[i,j] = sum(score_pairwise(X.loc[a], X.loc[b], blosum, -5, -1))
+                j += 1
+            i += 1
+
+        X = enc_seq
+        temp_col = np.array(temp_col).reshape(-1,1)
+        X = np.concatenate((X,temp_col), axis =1)
+        
+    if encoding == 'fft':
+        aaindex = Aaindex()
+        
+        record = aaindex.get(key[0])
+        index_data = record.index_data
+        index_data['-'] = 0
+        sequence_aligned=dframe.apply(lambda dframe : pd.Series(index_data[i] for i in dframe))
+
+        temp1=sequence_aligned.transpose()
+        temp2 = df[['Organism Name',temperature,output]]
+        temp3 =removeoutlier_col(temp2,output).set_index('Organism Name')
+        Z=pd.concat([temp1, temp3], axis=1).dropna()
+        X=Z.loc[:, Z.columns != output ]
+        y=Z.loc[:, Z.columns == output]
+        temp_col = X.loc[:, X.columns == temperature ]
+        X = X.loc[:, X.columns != temperature ]
+        
+        
+        X = fft(X)
+        holder = key[0]
         
     return X,y
     
 
+    
 
