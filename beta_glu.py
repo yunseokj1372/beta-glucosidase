@@ -365,6 +365,41 @@ def encode_temp(encoding, output, df, aln, key = None):
         temp1 = np.array(X1).reshape(-1,1)
         X = np.concatenate((X,temp1), axis =1)
         
+    if encoding == 'bigram':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+        
+        example = df['Sequence'][0]
+        lst = list(set(list(df['Sequence'][0])))
+        all_dct = {}
+        key = []
+        for i in lst:
+            for j in lst:
+                st = i+j
+                all_dct[st] = []
+
+        for example, id in zip(X,range(len(X))):
+
+            temp = list(example)
+            temp_dct = dict.fromkeys(all_dct.keys(),0)
+            for k in range(len(temp)-1):
+                try:
+                    check = temp[k] + temp[k+1]
+                    temp_dct[check] += 1
+                except:
+                    pass
+            for key, value in temp_dct.items():
+                all_dct[key].append(value)
+        X = pd.DataFrame.from_dict(all_dct)
+        temperature = 'Reaction Temperature'
+        X1 = df[temperature].iloc[rem_index]
+        temp1 = np.array(X1).reshape(-1,1)
+        X = np.concatenate((X,temp1), axis =1)
+        
+        
+        
     if encoding == 'AAIndex':
         temperature = 'Reaction Temperature'
         aaindex = Aaindex()
@@ -444,7 +479,7 @@ def ml_process(encoding, output, df, aln, temp = False, jack = False ,  key = No
 
     if temp == False:
         X,y,holder = encode(encoding, output, df, aln, key)
-    else:
+    if temp == True:
         X,y,holder = encode_temp(encoding, output, df, aln, key)
 
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.20, random_state=101)
