@@ -454,7 +454,7 @@ def encode_temp(encoding, output, df, aln, key = None):
         
     if encoding == 'fft':
         aaindex = Aaindex()
-        
+        temperature = 'Reaction Temperature'
         record = aaindex.get(key[0])
         index_data = record.index_data
         index_data['-'] = 0
@@ -471,6 +471,8 @@ def encode_temp(encoding, output, df, aln, key = None):
         
         
         X = fft(X)
+        # adding magnitude
+        X = np.abs(X)
         holder = key[0]
         
     return X,y, holder
@@ -503,7 +505,7 @@ def ml_process(encoding, output, df, aln, temp = False, jack = False ,  key = No
     all_result.append([output, "Random Forest Regression", encoding,holder,np.sqrt(metrics.mean_squared_error(y_train, RF_train)), np.sqrt(metrics.mean_squared_error(y_val, RF_pred)), r2_score(y_train, RF_train),r2_score(y_val, RF_pred)]) 
     all_result.append([output, "Support Vector Machine Regression", encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, SVM_train)), np.sqrt(metrics.mean_squared_error(y_val, SVM_pred)), r2_score(y_train, SVM_train),r2_score(y_val, SVM_pred)]) 
     all_result.append([output,"Neural Network Regression",encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, NNR_train)), np.sqrt(metrics.mean_squared_error(y_val, NNR_pred)), r2_score(y_train, NNR_train),r2_score(y_val, NNR_pred)]) 
-    all_result.append([output,"Elastic Network Regression",encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, EN_train)), np.sqrt(metrics.mean_squared_error(y_val, EN_pred)), r2_score(y_train, EN_train),r2_score(y_val, EN_pred)])
+    all_result.append([output,"Elastic Net Regression",encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, EN_train)), np.sqrt(metrics.mean_squared_error(y_val, EN_pred)), r2_score(y_train, EN_train),r2_score(y_val, EN_pred)])
     all_result.append([output,"XGB Regression",encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, XG_train)), np.sqrt(metrics.mean_squared_error(y_val, XG_pred)), r2_score(y_train, XG_train),r2_score(y_val, XG_pred)]) 
 
     dfResults = pd.DataFrame(all_result, columns=['Output' , 'Algorithm','Encoding Method' ,'Code', "RMSE Training", 'RMSE Val',"R^2 train","R^2 Val"])
