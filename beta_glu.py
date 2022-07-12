@@ -480,6 +480,37 @@ def encode_temp(encoding, output, df, aln, key = None):
         temp_col = np.array(temp_col).reshape(-1,1)
         X = np.concatenate((X,temp_col), axis =1)
         
+    if encoding == 'BLOSUM45':
+
+        holder = np.nan
+        temperature = 'Reaction Temperature'
+        temp1=dframe.transpose()
+        temp2 = df[['Organism Name',temperature,output]]
+        temp3 =removeoutlier_col(temp2,output).set_index('Organism Name')
+        Z=pd.concat([temp1, temp3], axis=1).dropna()
+        X=Z.loc[:, Z.columns != output ]
+        y=Z.loc[:, Z.columns == output]
+        temp_col = X.loc[:, X.columns == temperature ]
+        X = X.loc[:, X.columns != temperature ]
+        
+        
+        n = len(X)
+        enc_seq = np.zeros((n,n))
+
+        i = 0
+
+        for a in list(X.index):
+            j = 0
+            for b in list(X.index):
+                enc_seq[i,j] = sum(score_pairwise(X.loc[a], X.loc[b], blosum_new, -5, -1))
+                j += 1
+            i += 1
+
+        X = enc_seq
+        temp_col = np.array(temp_col).reshape(-1,1)
+        X = np.concatenate((X,temp_col), axis =1)
+        
+    
     if encoding == 'fft':
         aaindex = Aaindex()
         temperature = 'Reaction Temperature'
