@@ -14,6 +14,7 @@ from Bio import SeqIO
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
 import blosum as bl
 from Bio.SubsMat.MatrixInfo import blosum62 as blosum
+from Bio.SubsMat.MatrixInfo import blosum45 as blosum_new
 from Bio import AlignIO
 from Bio import SeqIO
 from Bio.Align.Applications import MuscleCommandline
@@ -218,6 +219,7 @@ def XGBR(X_train, y_train, X_val, jack = False):
 # BLOSUM score function
 
 blosum.update(((b,a),val) for (a,b),val in list(blosum.items()))
+blosum_new.update(((b,a),val) for (a,b),val in list(blosum_new.items()))
 
 def score_pairwise(seq1, seq2, matrix, gap_s, gap_e, gap = True):
     for A,B in zip(seq1, seq2):
@@ -302,6 +304,32 @@ def encode(encoding, output, df, aln, key = None):
             i += 1
 
         X = enc_seq
+        
+    if encoding == 'BLOSUM45':
+
+        holder = np.nan
+        temp1=dframe.transpose()
+        temp2 = df[['Organism Name',output]]
+        temp3 = removeoutlier_col(temp2,output).set_index('Organism Name')
+        Z=pd.concat([temp1, temp3], axis=1).dropna()
+
+        X=Z.loc[:, Z.columns != output]
+        y=Z.loc[:, Z.columns == output]
+
+        n = len(X)
+        enc_seq = np.zeros((n,n))
+
+        i = 0
+
+        for a in list(X.index):
+            j = 0
+            for b in list(X.index):
+                enc_seq[i,j] = sum(score_pairwise(X.loc[a], X.loc[b], blosum_new, -5, -1))
+                j += 1
+            i += 1
+
+        X = enc_seq
+        
         
     if encoding == 'fft':
         aaindex = Aaindex()
