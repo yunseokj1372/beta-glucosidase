@@ -261,6 +261,37 @@ def encode(encoding, output, df, aln, key = None):
         y = df[output].iloc[rem_index]
         X = pd.DataFrame([ProteinAnalysis(i).count_amino_acids() for i in X])
         
+        
+        
+    if encoding == 'bigram':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+        
+        example = df['Sequence'][0]
+        lst = list(set(list(df['Sequence'][0])))
+        all_dct = {}
+        key = []
+        for i in lst:
+            for j in lst:
+                st = i+j
+                all_dct[st] = []
+
+        for example, id in zip(X,range(len(X))):
+
+            temp = list(example)
+            temp_dct = dict.fromkeys(all_dct.keys(),0)
+            for k in range(len(temp)-1):
+                try:
+                    check = temp[k] + temp[k+1]
+                    temp_dct[check] += 1
+                except:
+                    pass
+            for key, value in temp_dct.items():
+                all_dct[key].append(value)
+        X = pd.DataFrame.from_dict(all_dct)
+        
     if encoding == 'AAIndex':
         aaindex = Aaindex()
 #         full_list = aaindex.get_all(dbkey='aaindex1')
@@ -425,7 +456,40 @@ def encode_temp(encoding, output, df, aln, key = None):
         X1 = df[temperature].iloc[rem_index]
         temp1 = np.array(X1).reshape(-1,1)
         X = np.concatenate((X,temp1), axis =1)
-        
+    
+    if encoding == 'trigram':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+
+        example = df['Sequence'][0]
+        lst = list(set(list(df['Sequence'][0])))
+        all_dct = {}
+        key = []
+        for i in lst:
+            for j in lst:
+                for k in lst:
+                    st = i+j+k
+                    all_dct[st] = []
+
+        for example, id in zip(X,range(len(X))):
+
+            temp = list(example)
+            temp_dct = dict.fromkeys(all_dct.keys(),0)
+            for k in range(len(temp)-2):
+                try:
+                    check = temp[k] + temp[k+1]+temp[k+2]
+                    temp_dct[check] += 1
+                except:
+                    pass
+            for key, value in temp_dct.items():
+                all_dct[key].append(value)
+        X = pd.DataFrame.from_dict(all_dct)
+        temperature = 'Reaction Temperature'
+        X1 = df[temperature].iloc[rem_index]
+        temp1 = np.array(X1).reshape(-1,1)
+        X = np.concatenate((X,temp1), axis =1)
         
         
     if encoding == 'AAIndex':
