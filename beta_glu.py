@@ -1,7 +1,7 @@
 # Importing needed library
 import pandas as pd
 import numpy as np
-
+from sklearn import preprocessing
 import pandascharm as pc
 from sklearn.metrics import r2_score
 from sklearn import metrics
@@ -398,6 +398,8 @@ def encode_temp(encoding, output, df, aln, key = None):
     
     main_output = removeoutliers(df[[output]])
     main_index = list(main_output.index)
+    scaler = preprocessing.StandardScaler()
+    
     
     if encoding == 'One-Hot-Encoder':
         holder = np.nan
@@ -412,6 +414,9 @@ def encode_temp(encoding, output, df, aln, key = None):
         X1 = df[temperature].iloc[rem_index]
         temp1 = np.array(X1).reshape(-1,1)
         X = np.concatenate((X,temp1), axis =1)
+        scaler.fit(X)
+        X = scaler.transform(X)
+        
         
     if encoding == 'Bag-of-Words':
         holder = np.nan
@@ -423,6 +428,8 @@ def encode_temp(encoding, output, df, aln, key = None):
         X1 = df[temperature].iloc[rem_index]
         temp1 = np.array(X1).reshape(-1,1)
         X = np.concatenate((X,temp1), axis =1)
+        scaler.fit(X)
+        X = scaler.transform(X)
         
     if encoding == 'bigram':
         holder = np.nan
@@ -456,6 +463,8 @@ def encode_temp(encoding, output, df, aln, key = None):
         X1 = df[temperature].iloc[rem_index]
         temp1 = np.array(X1).reshape(-1,1)
         X = np.concatenate((X,temp1), axis =1)
+        scaler.fit(X)
+        X = scaler.transform(X)
     
     if encoding == 'trigram':
         holder = np.nan
@@ -490,7 +499,8 @@ def encode_temp(encoding, output, df, aln, key = None):
         X1 = df[temperature].iloc[rem_index]
         temp1 = np.array(X1).reshape(-1,1)
         X = np.concatenate((X,temp1), axis =1)
-        
+        scaler.fit(X)
+        X = scaler.transform(X)
         
     if encoding == 'AAIndex':
         temperature = 'Reaction Temperature'
@@ -510,7 +520,8 @@ def encode_temp(encoding, output, df, aln, key = None):
         y=Z.loc[:, Z.columns == output]
         temp_col = X.loc[:, X.columns == temperature ]
         X = X.loc[:, X.columns != temperature ]
-        
+        scaler.fit(X)
+        X = scaler.transform(X)
 
         holder = key[0]
         
@@ -543,6 +554,10 @@ def encode_temp(encoding, output, df, aln, key = None):
         X = enc_seq
         temp_col = np.array(temp_col).reshape(-1,1)
         X = np.concatenate((X,temp_col), axis =1)
+        scaler.fit(X)
+        X = scaler.transform(X)
+        
+        
         
     if encoding == 'BLOSUM45':
 
@@ -573,7 +588,8 @@ def encode_temp(encoding, output, df, aln, key = None):
         X = enc_seq
         temp_col = np.array(temp_col).reshape(-1,1)
         X = np.concatenate((X,temp_col), axis =1)
-        
+        scaler.fit(X)
+        X = scaler.transform(X)
     
     if encoding == 'fft':
         aaindex = Aaindex()
@@ -597,6 +613,11 @@ def encode_temp(encoding, output, df, aln, key = None):
         # adding magnitude
         X = np.abs(X)
         holder = key[0]
+        scaler.fit(X)
+        X = scaler.transform(X)
+        
+        
+        
         
     return X,y, holder
     
