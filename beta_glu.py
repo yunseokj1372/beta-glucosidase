@@ -270,7 +270,7 @@ def encode(encoding, output, df, aln, key = None):
         y = df[output].iloc[rem_index]
         
         example = df['Sequence'][0]
-        lst = list(set(list(df['Sequence'][0])))
+        lst = ['E','G','L','Y','T','H','R','A','C','D','P','I','F','N','K','S','V','M','W','Q']
         all_dct = {}
         key = []
         for i in lst:
@@ -291,6 +291,68 @@ def encode(encoding, output, df, aln, key = None):
             for key, value in temp_dct.items():
                 all_dct[key].append(value)
         X = pd.DataFrame.from_dict(all_dct)
+        
+    if encoding == 'trigram':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+
+        example = df['Sequence'][0]
+        lst = ['E','G','L','Y','T','H','R','A','C','D','P','I','F','N','K','S','V','M','W','Q']
+        all_dct = {}
+        key = []
+        for i in lst:
+            for j in lst:
+                for k in lst:
+                    st = i+j+k
+                    all_dct[st] = []
+
+        for example, id in zip(X,range(len(X))):
+
+            temp = list(example)
+            temp_dct = dict.fromkeys(all_dct.keys(),0)
+            for k in range(len(temp)-2):
+                try:
+                    check = temp[k] + temp[k+1]+temp[k+2]
+                    temp_dct[check] += 1
+                except:
+                    pass
+            for key, value in temp_dct.items():
+                all_dct[key].append(value)
+        X = pd.DataFrame.from_dict(all_dct)
+        
+    if encoding == 'quadrogram':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+
+        example = df['Sequence'][0]
+        lst = ['E','G','L','Y','T','H','R','A','C','D','P','I','F','N','K','S','V','M','W','Q']
+        all_dct = {}
+        key = []
+        for i in lst:
+            for j in lst:
+                for k in lst:
+                    for l in lst:
+                        st = i+j+k+l
+                        all_dct[st] = []
+
+        for example, id in zip(X,range(len(X))):
+
+            temp = list(example)
+            temp_dct = dict.fromkeys(all_dct.keys(),0)
+            for k in range(len(temp)-3):
+                try:
+                    check = temp[k] + temp[k+1]+temp[k+2]+temp[k+3]
+                    temp_dct[check] += 1
+                except:
+                    pass
+            for key, value in temp_dct.items():
+                all_dct[key].append(value)
+        X = pd.DataFrame.from_dict(all_dct)
+
         
     if encoding == 'AAIndex':
         aaindex = Aaindex()
@@ -382,9 +444,14 @@ def encode(encoding, output, df, aln, key = None):
         X = fft(X)
         holder = key[0]
         
-    return X,y, holder
+    return X,y,holder
 
 
+
+
+
+
+# Encoding With Temperature
 
 def encode_temp(encoding, output, df, aln, key = None):
     
@@ -438,7 +505,7 @@ def encode_temp(encoding, output, df, aln, key = None):
         y = df[output].iloc[rem_index]
         
         example = df['Sequence'][0]
-        lst = list(set(list(df['Sequence'][0])))
+        lst = ['E','G','L','Y','T','H','R','A','C','D','P','I','F','N','K','S','V','M','W','Q']
         all_dct = {}
         key = []
         for i in lst:
@@ -473,7 +540,7 @@ def encode_temp(encoding, output, df, aln, key = None):
         y = df[output].iloc[rem_index]
 
         example = df['Sequence'][0]
-        lst = list(set(list(df['Sequence'][0])))
+        lst = ['E','G','L','Y','T','H','R','A','C','D','P','I','F','N','K','S','V','M','W','Q']
         all_dct = {}
         key = []
         for i in lst:
@@ -489,6 +556,44 @@ def encode_temp(encoding, output, df, aln, key = None):
             for k in range(len(temp)-2):
                 try:
                     check = temp[k] + temp[k+1]+temp[k+2]
+                    temp_dct[check] += 1
+                except:
+                    pass
+            for key, value in temp_dct.items():
+                all_dct[key].append(value)
+        X = pd.DataFrame.from_dict(all_dct)
+        temperature = 'Reaction Temperature'
+        X1 = df[temperature].iloc[rem_index]
+        temp1 = np.array(X1).reshape(-1,1)
+        X = np.concatenate((X,temp1), axis =1)
+        scaler.fit(X)
+        X = scaler.transform(X)
+        
+        
+    if encoding == 'quadrogram':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+
+        example = df['Sequence'][0]
+        lst = ['E','G','L','Y','T','H','R','A','C','D','P','I','F','N','K','S','V','M','W','Q']
+        all_dct = {}
+        key = []
+        for i in lst:
+            for j in lst:
+                for k in lst:
+                    for l in lst:
+                        st = i+j+k+l
+                        all_dct[st] = []
+
+        for example, id in zip(X,range(len(X))):
+
+            temp = list(example)
+            temp_dct = dict.fromkeys(all_dct.keys(),0)
+            for k in range(len(temp)-3):
+                try:
+                    check = temp[k] + temp[k+1]+temp[k+2]+temp[k+3]
                     temp_dct[check] += 1
                 except:
                     pass
@@ -624,7 +729,7 @@ def encode_temp(encoding, output, df, aln, key = None):
 def ml_process(encoding, output, df, aln, temp = False, jack = False ,  key = None):
 
     if temp == False:
-        X,y,holder = encode(encoding, output, df, aln, key)
+        X,y,holder = encode(encoding, output, df, aln, key) 
     if temp == True:
         X,y,holder = encode_temp(encoding, output, df, aln, key)
 
