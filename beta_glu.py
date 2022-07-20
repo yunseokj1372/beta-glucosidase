@@ -43,7 +43,8 @@ def removeoutliers(df):
     Q1 = df.quantile(0.25)
     Q3 = df.quantile(0.75)
     IQR = Q3 - Q1
-    df_out = df[~((df < (Q1 - 1.5 * IQR)) |(df > (Q3 + 1.5 * IQR))).any(axis=1)]
+    df_out = df[~((df < (Q1 - 100 * IQR)) |(df > (Q3 + 100 * IQR))).any(axis=1)]
+#     df_out = df
     return df_out.dropna()
 
 def removeoutlier_col(df,cols):
@@ -51,7 +52,7 @@ def removeoutlier_col(df,cols):
     Q3 = df[cols].quantile(0.75)
     IQR = Q3 - Q1
 
-    df = df[~((df[[cols]] < (Q1 - 1.5 * IQR)) |(df[[cols]] > (Q3 + 1.5 * IQR))).any(axis=1)]
+    df = df[~((df[[cols]] < (Q1 - 1.7 * IQR)) |(df[[cols]] > (Q3 + 1.7 * IQR))).any(axis=1)]
     return df.dropna()
 
 
