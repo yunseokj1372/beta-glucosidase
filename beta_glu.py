@@ -52,7 +52,7 @@ def removeoutlier_col(df,cols):
     Q3 = df[cols].quantile(0.75)
     IQR = Q3 - Q1
 
-    df = df[~((df[[cols]] < (Q1 - 1.7 * IQR)) |(df[[cols]] > (Q3 + 1.7 * IQR))).any(axis=1)]
+    df = df[~((df[[cols]] < (Q1 - 100 * IQR)) |(df[[cols]] > (Q3 + 100 * IQR))).any(axis=1)]
     return df.dropna()
 
 
