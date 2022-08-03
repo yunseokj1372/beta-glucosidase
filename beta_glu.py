@@ -38,6 +38,9 @@ from sklearn.linear_model import Lasso
 from pyaaisc import Aaindex
 from Bio import AlignIO
 
+
+import scipy.stats as stats
+
 # Two versions of removing outliers
 def removeoutliers(df):
     Q1 = df.quantile(0.25)
@@ -118,7 +121,7 @@ def PLS(X_train, y_train, X_val, jack = False):
 
 def RF(X_train, y_train, X_val, jack = False):
     knife = len(X_train)-1
-    param_grid={"n_estimators": [100] , "max_features": [5], 'random_state':[20]}
+    param_grid={'max_depth': [70], 'min_samples_leaf': [1], 'min_samples_split': [2], 'n_estimators': [50]}
     rf = RandomForestRegressor()
     if jack == False:
         grid_search=GridSearchCV(rf, param_grid, cv=5, scoring='neg_mean_squared_error', return_train_score=True)
@@ -133,7 +136,7 @@ def RF(X_train, y_train, X_val, jack = False):
 
 def DT(X_train, y_train, X_val, jack = False):
     knife = len(X_train)-1
-    param_grid={ "max_features": [5], 'random_state':[20]}
+    param_grid={ "max_features": [2], 'random_state':[20]}
     tree_reg=DecisionTreeRegressor()
     if jack == False:
         grid_search=GridSearchCV(tree_reg, param_grid, cv=5, scoring='neg_mean_squared_error', return_train_score=True)
@@ -148,9 +151,7 @@ def DT(X_train, y_train, X_val, jack = False):
 
 def SVM(X_train, y_train, X_val, jack = False):
     knife = len(X_train)-1
-    param_grid = {'C': [100],
-              'epsilon': [0.5],
-              'kernel': ['poly']}
+    param_grid = {'C': [10], 'coef0': [0.01], 'degree': [3]}
  
     model = SVR()
     if jack == False:
@@ -167,7 +168,7 @@ def SVM(X_train, y_train, X_val, jack = False):
 def NNR(X_train, y_train, X_val, jack = False):
     
     knife = len(X_train)-1
-    param_grid = {"hidden_layer_sizes": [(1,),(50,)], "alpha": [0.5]}
+    param_grid = {'activation': ['tanh'], 'alpha': [0.0005], 'hidden_layer_sizes': [50], 'solver': ['sgd']}
     regr = MLPRegressor(random_state=101, max_iter=100).fit(X_train, y_train)
     if jack == False:
         grid_search=GridSearchCV(regr, param_grid, cv=5, scoring='neg_mean_squared_error', return_train_score=True)
@@ -182,9 +183,7 @@ def NNR(X_train, y_train, X_val, jack = False):
 
 def EN(X_train, y_train, X_val, jack = False):
     knife = len(X_train)-1
-    param_grid = dict()
-    param_grid['alpha'] = [1.0]
-    param_grid['l1_ratio'] =[0.5]
+    param_grid = {'alpha': [10], 'l1_ratio': [0.1], 'max_iter': [10]}
     ENmodel = ElasticNet()
     if jack == False:
         grid_search=GridSearchCV(ENmodel, param_grid, cv=5, scoring='neg_mean_squared_error', return_train_score=True)
@@ -200,12 +199,7 @@ def EN(X_train, y_train, X_val, jack = False):
 def XGBR(X_train, y_train, X_val, jack = False):
     knife = len(X_train)-1
     
-    param_grid = { 'max_depth': [4],
-           'n_estimators': [100],
-           'colsample_bytree': [0.2],
-           'min_child_weight': [3],
-           'gamma': [0.3],
-           'subsample': [0.4]}
+    param_grid = {'colsample_bytree': [0.8], 'gamma': [0.5], 'max_depth': [4], 'min_child_weight': [1], 'subsample': [0.6]}
     
     if jack == False:
         grid_search=GridSearchCV(xgb.XGBRegressor(), param_grid, cv=5, scoring='neg_mean_squared_error', return_train_score=True)
@@ -485,6 +479,27 @@ def encode_temp(encoding, output, df, aln, key = None):
         scaler.fit(X)
         X = scaler.transform(X)
         
+#         holder = np.nan
+#         temperature = 'Reaction Temperature'
+#         temp1=dframe.transpose()
+#         temp2 = df[['Organism Name',temperature,output]]
+#         temp3 =removeoutlier_col(temp2,output).set_index('Organism Name')
+#         Z=pd.concat([temp1, temp3], axis=1).dropna()
+#         X=Z.loc[:, Z.columns != output ]
+#         y=Z.loc[:, Z.columns == output]
+#         temp_col = X.loc[:, X.columns == temperature ]
+#         X = X.loc[:, X.columns != temperature ]
+#         one_hot = OneHotEncoder()
+#         temp_seq = np.array(X).reshape(-1,1)
+#         encoded = one_hot.fit(temp_seq)
+#         X = encoded.transform(temp_seq).toarray()
+        
+#         temp_col = np.array(temp_col).reshape(-1,1)
+#         X = np.concatenate((X,temp_col), axis =1)
+#         scaler.fit(X)
+#         X = scaler.transform(X)
+        
+    
         
     if encoding == 'Bag-of-Words':
         holder = np.nan
@@ -748,17 +763,17 @@ def ml_process(encoding, output, df, aln, temp = False, jack = False ,  key = No
     EN_pred , EN_train = EN(X_train, y_train, X_val, jack)
     XG_pred, XG_train = XGBR(X_train, y_train, X_val, jack)
 
-    all_result.append([output, "Linear Regression", encoding, holder, np.sqrt(metrics.mean_squared_error(y_train, lin_train)), np.sqrt(metrics.mean_squared_error(y_val, lin_pred)), r2_score(y_train, lin_train),r2_score(y_val, lin_pred)]) 
-    all_result.append([output, "LASSO Regression", encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, lasso_train)), np.sqrt(metrics.mean_squared_error(y_val, lasso_pred)), r2_score(y_train, lasso_train),r2_score(y_val, lasso_pred)]) 
-    all_result.append([output, "Partial Least Square", encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, PLS_train)), np.sqrt(metrics.mean_squared_error(y_val, PLS_pred)), r2_score(y_train, PLS_train),r2_score(y_val, PLS_pred)]) 
-    all_result.append([output, "Decision Tree Regression", encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, DT_train)), np.sqrt(metrics.mean_squared_error(y_val, DT_pred)), r2_score(y_train, DT_train),r2_score(y_val, DT_pred)]) 
-    all_result.append([output, "Random Forest Regression", encoding,holder,np.sqrt(metrics.mean_squared_error(y_train, RF_train)), np.sqrt(metrics.mean_squared_error(y_val, RF_pred)), r2_score(y_train, RF_train),r2_score(y_val, RF_pred)]) 
-    all_result.append([output, "Support Vector Machine Regression", encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, SVM_train)), np.sqrt(metrics.mean_squared_error(y_val, SVM_pred)), r2_score(y_train, SVM_train),r2_score(y_val, SVM_pred)]) 
-    all_result.append([output,"Neural Network Regression",encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, NNR_train)), np.sqrt(metrics.mean_squared_error(y_val, NNR_pred)), r2_score(y_train, NNR_train),r2_score(y_val, NNR_pred)]) 
-    all_result.append([output,"Elastic Net Regression",encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, EN_train)), np.sqrt(metrics.mean_squared_error(y_val, EN_pred)), r2_score(y_train, EN_train),r2_score(y_val, EN_pred)])
-    all_result.append([output,"XGB Regression",encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, XG_train)), np.sqrt(metrics.mean_squared_error(y_val, XG_pred)), r2_score(y_train, XG_train),r2_score(y_val, XG_pred)]) 
+    all_result.append([output, "Linear Regression", encoding, holder, np.sqrt(metrics.mean_squared_error(y_train, lin_train)), np.sqrt(metrics.mean_squared_error(y_val, lin_pred)), r2_score(y_train, lin_train),r2_score(y_val, lin_pred), stats.pearsonr(lin_pred,y_val)[0]])
+    all_result.append([output, "LASSO Regression", encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, lasso_train)), np.sqrt(metrics.mean_squared_error(y_val, lasso_pred)), r2_score(y_train, lasso_train),r2_score(y_val, lasso_pred),stats.pearsonr(lasso_pred,y_val)[0]]) 
+#     all_result.append([output, "Partial Least Square", encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, PLS_train)), np.sqrt(metrics.mean_squared_error(y_val, PLS_pred)), r2_score(y_train, PLS_train),r2_score(y_val,PLS_pred),stats.pearsonr(PLS_pred,y_val)[0]]) 
+    all_result.append([output, "Decision Tree Regression", encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, DT_train)), np.sqrt(metrics.mean_squared_error(y_val, DT_pred)), r2_score(y_train, DT_train),r2_score(y_val, DT_pred),stats.pearsonr(DT_pred,y_val)[0]]) 
+    all_result.append([output, "Random Forest Regression", encoding,holder,np.sqrt(metrics.mean_squared_error(y_train, RF_train)), np.sqrt(metrics.mean_squared_error(y_val, RF_pred)), r2_score(y_train, RF_train),r2_score(y_val, RF_pred), stats.pearsonr(RF_pred,y_val)[0]]) 
+    all_result.append([output, "Support Vector Machine Regression", encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, SVM_train)), np.sqrt(metrics.mean_squared_error(y_val, SVM_pred)), r2_score(y_train, SVM_train),r2_score(y_val, SVM_pred),stats.pearsonr(SVM_pred,y_val)[0]]) 
+    all_result.append([output,"Neural Network Regression",encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, NNR_train)), np.sqrt(metrics.mean_squared_error(y_val, NNR_pred)), r2_score(y_train, NNR_train),r2_score(y_val, NNR_pred),stats.pearsonr(NNR_pred,y_val)[0]]) 
+    all_result.append([output,"Elastic Net Regression",encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, EN_train)), np.sqrt(metrics.mean_squared_error(y_val, EN_pred)), r2_score(y_train, EN_train),r2_score(y_val, EN_pred),stats.pearsonr(EN_pred,y_val)[0]])
+    all_result.append([output,"XGB Regression",encoding,holder, np.sqrt(metrics.mean_squared_error(y_train, XG_train)), np.sqrt(metrics.mean_squared_error(y_val, XG_pred)), r2_score(y_train, XG_train),r2_score(y_val, XG_pred),stats.pearsonr(XG_pred,y_val)[0]]) 
 
-    dfResults = pd.DataFrame(all_result, columns=['Output' , 'Algorithm','Encoding Method' ,'Code', "RMSE Training", 'RMSE Val',"R^2 train","R^2 Val"])
+    dfResults = pd.DataFrame(all_result, columns=['Output' , 'Algorithm','Encoding Method' ,'Code', "RMSE Training", 'RMSE Val',"R^2 train","R^2 Val", "Pearson r"])
         
     
     return all_result , dfResults
