@@ -54,7 +54,7 @@ def rand_generate(inp, number_of_rand):
     return new_input
 
 
-def encode_input(inp, encoding, df,output, key = None, aln = None, temp=False):
+def encode_input(inp, encoding, df,output, key = None, aln = None, temper=False):
     lst = ['E','G','L','Y','T','H','R','A','C','D','P','I','F','N','K','S','V','M','W','Q']
     all_dct = {}
     key = []
@@ -71,6 +71,7 @@ def encode_input(inp, encoding, df,output, key = None, aln = None, temp=False):
     
     
     if encoding == 'bigram':
+        str_seq = [inp]
         for i in lst:
             for j in lst:
                 st = i+j
@@ -89,11 +90,34 @@ def encode_input(inp, encoding, df,output, key = None, aln = None, temp=False):
             for key, value in temp_dct.items():
                 all_dct[key].append(value)
         encoded_inp = pd.DataFrame.from_dict(all_dct)
+    
+    
+    if encoding == 'trigram':
+        str_seq = [inp]
         
+        for i in lst:
+            for j in lst:
+                for k in lst:
+                    st = i+j+k
+                    all_dct[st] = []
+
+        for example, id in zip(str_seq,range(len(str_seq))):
+            
+            temp = list(example)
+            temp_dct = dict.fromkeys(all_dct.keys(),0)
+            for k in range(len(temp)-2):
+                try:
+                    check = temp[k] + temp[k+1] + temp[k+2]
+                    temp_dct[check] += 1
+                except:
+                    pass
+            for key, value in temp_dct.items():
+                all_dct[key].append(value)
+        encoded_inp = pd.DataFrame.from_dict(all_dct)
         
-    if str.isnumeric(temp):
-        encoded_inp_temp= np.append(encoded_inp,temp)
-        encoded_inp_temp = scaler.transform(encoded_inp_temp)
+    if str.isnumeric(temper):
+        encoded_inp_temp= np.append(encoded_inp,(int(temper)))
+        encoded_inp_temp = scaler.transform(encoded_inp_temp.reshape(1,-1))
         
         
     return encoded_inp, encoded_inp_temp
@@ -101,11 +125,6 @@ def encode_input(inp, encoding, df,output, key = None, aln = None, temp=False):
 
     
     
-    
-    # Get the sequence with the highest kcat/km
-    
-
-
 
     
 
