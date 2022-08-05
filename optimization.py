@@ -47,11 +47,11 @@ from Bio import AlignIO
 def rand_generate(inp, number_of_rand):
     lst = ['E','G','L','Y','T','H','R','A','C','D','P','I','F','N','K','S','V','M','W','Q']
     index = np.arange(len(list(inp)))
-    new_input = np.array(list(sample))
+    new_input = np.array(list(inp))
     for let,ind in zip(np.random.choice(lst, number_of_rand),np.random.choice(index, number_of_rand,replace = False)):
         new_input[ind] = let
         
-    return new_input
+    return ''.join(list(new_input))
 
 
 def encode_input(inp, encoding, df,output, key = None, aln = None, temper=False):
@@ -123,9 +123,16 @@ def encode_input(inp, encoding, df,output, key = None, aln = None, temper=False)
     return encoded_inp, encoded_inp_temp
 
 
-    
-    
-
+def optimizer(inp, encoding, df, output, model, key = None, aln = None, temper=False, epoch=100, number_of_rand =1):
+    max = 0
+    for i in range(epoch):
+        rand_input = rand_generate(inp, number_of_rand)
+        before, new_input =  encode_input(rand_input, encoding, df,output, key = None, aln = aln, temper=temper)
+        compare_output = model.predict(new_input)
+        if max <= compare_output:
+            max = compare_output
+            final_input = rand_input
+    return max, final_input
     
 
     
