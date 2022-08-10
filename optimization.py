@@ -139,7 +139,7 @@ def spotter(orig_inp, new_inp):
     empt = []
     for i in range(len(orig_inp)):
         if orig_inp[i] != new_inp[i]:
-            ins = orig_inp[i]+str(i)+new_inp[i]
+            ins = orig_inp[i]+str(i+1)+new_inp[i]
             empt.append(ins)
     return empt
 
