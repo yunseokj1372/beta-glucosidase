@@ -123,7 +123,7 @@ def encode_input(inp, encoding, df,output, key = None, aln = None, temper=False)
     return encoded_inp, encoded_inp_temp
 
 
-def optimizer(inp, encoding, df, output, model, key = None, aln = None, temper=False, epoch=100, number_of_rand =1):
+def stochastic_optimizer(inp, encoding, df, output, model, key = None, aln = None, temper=False, epoch=100, number_of_rand =1):
     max = 0
     for i in range(epoch):
         rand_input = rand_generate(inp, number_of_rand)
@@ -135,7 +135,13 @@ def optimizer(inp, encoding, df, output, model, key = None, aln = None, temper=F
     return max, final_input
     
 
-    
+def spotter(orig_inp, new_inp):
+    empt = []
+    for i in range(len(orig_inp)):
+        if orig_inp[i] != new_inp[i]:
+            ins = orig_inp[i]+str(i)+new_inp[i]
+            empt.append(ins)
+    return empt
 
 
 
