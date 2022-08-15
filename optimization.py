@@ -44,12 +44,25 @@ from Bio import AlignIO
 
 
 
-def rand_generate(inp, number_of_rand):
+def rand_generate(inp, number_of_rand, active_site = None):
+    ###
+    # active_site : list of indices which indicate mutation
+    ###
     lst = ['E','G','L','Y','T','H','R','A','C','D','P','I','F','N','K','S','V','M','W','Q']
-    index = np.arange(len(list(inp)))
-    new_input = np.array(list(inp))
-    for let,ind in zip(np.random.choice(lst, number_of_rand),np.random.choice(index, number_of_rand,replace = False)):
-        new_input[ind] = let
+    if active_site == None:
+        index = np.arange(len(list(inp)))
+        new_input = np.array(list(inp))
+        for ind in np.random.choice(index, number_of_rand,replace = False):
+            temp_lst = lst.copy()
+            temp_lst.remove(new_input[ind])
+            new_input[ind] = np.random.choice(temp_lst)
+    else:
+        index = np.arange(len(list(inp)))
+        new_input = np.array(list(inp))
+        for ind in active_site:
+            temp_lst = lst.copy()
+            temp_lst.remove(new_input[ind])
+            new_input[ind] = np.random.choice(temp_lst)
         
     return ''.join(list(new_input))
 
@@ -123,16 +136,19 @@ def encode_input(inp, encoding, df,output, key = None, aln = None, temper=False)
     return encoded_inp, encoded_inp_temp
 
 
-def stochastic_optimizer(inp, encoding, df, output, model, key = None, aln = None, temper=False, epoch=100, number_of_rand =1):
+def stochastic_optimizer(inp, encoding, df, output, model, key = None, aln = None, temper=False, epoch=100, number_of_rand =1, active_site = None):
     max = 0
     for i in range(epoch):
-        rand_input = rand_generate(inp, number_of_rand)
+        rand_input = rand_generate(inp, number_of_rand, active_site)
         before, new_input =  encode_input(rand_input, encoding, df,output, key = None, aln = aln, temper=temper)
         compare_output = model.predict(new_input)
         if max <= compare_output:
             max = compare_output
             final_input = rand_input
+        
     return max, final_input
+
+
     
 
 def spotter(orig_inp, new_inp):
