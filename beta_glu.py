@@ -46,7 +46,7 @@ def removeoutliers(df):
     Q1 = df.quantile(0.25)
     Q3 = df.quantile(0.75)
     IQR = Q3 - Q1
-    df_out = df[~((df < (Q1 - 1.5 * IQR)) |(df > (Q3 + 1.5 * IQR))).any(axis=1)]
+    df_out = df[~((df < (Q1 - 1 * IQR)) |(df > (Q3 + 100 * IQR))).any(axis=1)]
 #     df_out = df
     return df_out.dropna()
 
@@ -55,7 +55,7 @@ def removeoutlier_col(df,cols):
     Q3 = df[cols].quantile(0.75)
     IQR = Q3 - Q1
 
-    df = df[~((df[[cols]] < (Q1 - 1.5 * IQR)) |(df[[cols]] > (Q3 + 1.5 * IQR))).any(axis=1)]
+    df = df[~((df[[cols]] < (Q1 - 100 * IQR)) |(df[[cols]] > (Q3 + 100 * IQR))).any(axis=1)]
     return df.dropna()
 
 
@@ -777,5 +777,96 @@ def ml_process(encoding, output, df, aln, temp = False, jack = False ,  key = No
         
     
     return all_result , dfResults
+
+
+
+
+def temporary_non_scaled_encode(encoding, output, df, aln, key = None):
+    
+    ClustalAlign = AlignIO.read(aln, 'clustal')
+    summary_align = AlignInfo.SummaryInfo(ClustalAlign )
+    
+    dframe = pc.from_bioalignment(ClustalAlign)
+    dframe = dframe.replace('U', '-')
+    dframe = dframe.replace('O','-')
+    
+    main_output = removeoutliers(df[[output]])
+    main_index = list(main_output.index)
+#     scaler = preprocessing.StandardScaler()
+    
+    if encoding == 'trigram':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+
+        example = df['Sequence'][0]
+        lst = ['E','G','L','Y','T','H','R','A','C','D','P','I','F','N','K','S','V','M','W','Q']
+        all_dct = {}
+        key = []
+        for i in lst:
+            for j in lst:
+                for k in lst:
+                    st = i+j+k
+                    all_dct[st] = []
+
+        for example, id in zip(X,range(len(X))):
+
+            temp = list(example)
+            temp_dct = dict.fromkeys(all_dct.keys(),0)
+            for k in range(len(temp)-2):
+                try:
+                    check = temp[k] + temp[k+1]+temp[k+2]
+                    temp_dct[check] += 1
+                except:
+                    pass
+            for key, value in temp_dct.items():
+                all_dct[key].append(value)
+        X = pd.DataFrame.from_dict(all_dct)
+        temperature = 'Reaction Temperature'
+        X1 = df[temperature].iloc[rem_index]
+        temp1 = np.array(X1).reshape(-1,1)
+        X = np.concatenate((X,temp1), axis =1)
+        
+        
+    if encoding == 'quadrogram':
+        holder = np.nan
+        X = df['Sequence'].iloc[main_index].dropna()
+        rem_index = list(X.index)
+        y = df[output].iloc[rem_index]
+
+        example = df['Sequence'][0]
+        lst = ['E','G','L','Y','T','H','R','A','C','D','P','I','F','N','K','S','V','M','W','Q']
+        all_dct = {}
+        key = []
+        for i in lst:
+            for j in lst:
+                for k in lst:
+                    for l in lst:
+                        st = i+j+k+l
+                        all_dct[st] = []
+
+        for example, id in zip(X,range(len(X))):
+
+            temp = list(example)
+            temp_dct = dict.fromkeys(all_dct.keys(),0)
+            for k in range(len(temp)-3):
+                try:
+                    check = temp[k] + temp[k+1]+temp[k+2]+temp[k+3]
+                    temp_dct[check] += 1
+                except:
+                    pass
+            for key, value in temp_dct.items():
+                all_dct[key].append(value)
+        X = pd.DataFrame.from_dict(all_dct)
+        temperature = 'Reaction Temperature'
+        X1 = df[temperature].iloc[rem_index]
+        temp1 = np.array(X1).reshape(-1,1)
+        X = np.concatenate((X,temp1), axis =1)
+        
+    return X,y, holder
+
+
+
     
 

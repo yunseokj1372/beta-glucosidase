@@ -59,7 +59,7 @@ def rand_generate(inp, number_of_rand, active_site = None):
     else:
         index = np.arange(len(list(inp)))
         new_input = np.array(list(inp))
-        for ind in active_site:
+        for ind in np.random.choice(active_site, number_of_rand,replace = False):
             temp_lst = lst.copy()
             temp_lst.remove(new_input[ind])
             new_input[ind] = np.random.choice(temp_lst)
@@ -73,7 +73,7 @@ def encode_input(inp, encoding, df,output, key = None, aln = None, temper=False)
     key = []
     
     scaler = preprocessing.StandardScaler()
-    X,y,holder = beta_glu.encode_temp(encoding, output, df, aln, key = None)
+    X,y,holder = beta_glu.temporary_non_scaled_encode(encoding, output, df, aln, key = None)
     scaler.fit(X)
     
     
